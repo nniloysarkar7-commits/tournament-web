@@ -1,1 +1,666 @@
-404: Not Found
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FREE FIRE CHAMPIONSHIP — Squad Registration</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+:root{
+  --neon:#00ffcc;
+  --neon2:#ff2e63;
+  --bg:#05060a;
+  --card:#0d0f1a;
+  --warn:#ffb020;
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',sans-serif}
+body{background:var(--bg);color:#fff;overflow-x:hidden}
+canvas#bg{position:fixed;top:0;left:0;z-index:-1}
+
+.topbar{
+  background:linear-gradient(90deg,#0d0f1a,#141827,#0d0f1a);
+  border-bottom:1px solid var(--neon);
+  padding:14px 16px;text-align:center;font-size:.85rem;color:#cdeee5;line-height:1.8;
+}
+.topbar b{color:var(--neon)}
+.topbar a{color:var(--neon2);font-weight:bold;text-decoration:underline;cursor:pointer}
+
+header{text-align:center;padding:45px 20px 15px}
+h1{
+  font-size:clamp(1.8rem,6vw,3.6rem);
+  background:linear-gradient(90deg,var(--neon),var(--neon2),var(--neon));
+  background-size:200% auto;-webkit-background-clip:text;color:transparent;
+  animation:shine 3s linear infinite;letter-spacing:1px;
+}
+@keyframes shine{to{background-position:200% center}}
+header p{margin-top:8px;color:#aaa;font-size:1rem}
+
+.info-bar{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin:25px auto;max-width:900px;padding:0 20px}
+.info-chip{
+  background:var(--card);border:1px solid var(--neon);padding:9px 16px;border-radius:30px;
+  font-size:.85rem;box-shadow:0 0 12px rgba(0,255,204,.2);
+}
+
+details.rules{max-width:700px;margin:20px auto;padding:16px 20px;background:var(--card);border:1px solid #222;border-radius:12px}
+details.rules summary{cursor:pointer;color:var(--neon);font-weight:bold;font-size:.95rem;list-style:none}
+details.rules summary::-webkit-details-marker{display:none}
+details.rules summary::before{content:"📋 ";}
+details.rules summary::after{content:" (tap to view)";color:#777;font-weight:normal;font-size:.8rem}
+details.rules ul{margin:14px 0 0 18px;line-height:1.9;color:#ddd;font-size:.88rem}
+details.rules li b{color:var(--warn)}
+
+.tabs{display:flex;justify-content:center;gap:10px;margin:30px auto 10px}
+.tab-btn{padding:10px 22px;border-radius:8px;border:1px solid var(--neon);background:transparent;color:var(--neon);cursor:pointer;font-weight:bold;transition:.3s}
+.tab-btn.active{background:var(--neon);color:#000}
+
+section{display:none}
+section.active{display:block}
+
+/* ===== Wizard ===== */
+.wizard-wrap{max-width:560px;margin:20px auto 50px;padding:0 16px}
+.progress{display:flex;align-items:center;justify-content:center;margin-bottom:22px;gap:8px}
+.progress .dot{width:34px;height:34px;border-radius:50%;background:#1a1d2b;border:2px solid #333;color:#777;
+  display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:.9rem;transition:.3s}
+.progress .dot.active{border-color:var(--neon);color:var(--neon);box-shadow:0 0 12px rgba(0,255,204,.5)}
+.progress .dot.done{background:var(--neon);color:#000;border-color:var(--neon)}
+.progress .line{width:50px;height:2px;background:#333}
+.progress .line.done{background:var(--neon)}
+
+.step-card{background:rgba(13,15,26,.95);border:1px solid var(--neon);border-radius:18px;padding:26px 22px;
+  box-shadow:0 0 40px rgba(0,255,204,.12);backdrop-filter:blur(6px)}
+.step-card h2{color:var(--neon);text-align:center;font-size:1.3rem;margin-bottom:6px}
+.step-card .sub{text-align:center;color:#999;font-size:.85rem;margin-bottom:20px}
+
+.field{margin-bottom:14px}
+.field label{display:block;margin-bottom:5px;font-size:.82rem;color:#9fffe8}
+.field input{width:100%;padding:12px;border-radius:9px;border:1px solid #333;background:#0a0c14;color:#fff;outline:none;font-size:.95rem;transition:.3s}
+.field input:focus{border-color:var(--neon);box-shadow:0 0 10px rgba(0,255,204,.4)}
+.error-msg{color:var(--neon2);font-size:.75rem;margin-top:4px;display:none}
+
+.logo-upload{display:flex;flex-direction:column;align-items:center;margin-bottom:20px}
+.logo-circle{width:90px;height:90px;border-radius:50%;border:2px dashed var(--neon);display:flex;align-items:center;
+  justify-content:center;overflow:hidden;cursor:pointer;background:#0a0c14;position:relative}
+.logo-circle img{width:100%;height:100%;object-fit:cover;display:none}
+.logo-circle .plus{font-size:2rem;color:var(--neon)}
+.logo-upload input{display:none}
+.logo-upload span{margin-top:8px;font-size:.8rem;color:#999}
+
+.players-wrap{margin-top:18px}
+.toggle-row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:4px;
+  background:#0f1120;border:1px solid #232838;border-radius:12px;padding:12px 14px}
+.toggle-label{font-size:.88rem;color:var(--neon2);font-weight:bold}
+.toggle-label i{color:#888;font-weight:normal;font-size:.75rem}
+.switch{position:relative;display:inline-block;width:46px;height:25px;flex-shrink:0}
+.switch input{opacity:0;width:0;height:0}
+.slider-toggle{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:#333;transition:.3s;border-radius:24px}
+.slider-toggle:before{position:absolute;content:"";height:19px;width:19px;left:3px;bottom:3px;background-color:#fff;transition:.3s;border-radius:50%}
+.switch input:checked + .slider-toggle{background-color:var(--neon)}
+.switch input:checked + .slider-toggle:before{transform:translateX(21px)}
+.players-collapse{max-height:0;overflow:hidden;transition:max-height .45s cubic-bezier(.4,0,.2,1),opacity .35s ease;opacity:0}
+.players-collapse.open{opacity:1}
+.players-wrap>h3{color:var(--neon2);font-size:.95rem;margin-bottom:12px;text-align:center}
+.player-card{background:linear-gradient(135deg,#0f1120,#141728);border:1px solid #232838;border-radius:12px;padding:14px;margin-bottom:12px}
+.player-card .pnum{display:inline-block;width:22px;height:22px;border-radius:50%;background:var(--neon2);color:#fff;
+  font-size:.75rem;font-weight:bold;text-align:center;line-height:22px;margin-right:6px}
+.player-card .field{margin-bottom:10px}
+.player-card .field:last-child{margin-bottom:0}
+
+.nav-btns{display:flex;gap:10px;margin-top:22px}
+.btn{flex:1;padding:14px;border:none;border-radius:10px;font-weight:bold;font-size:.95rem;cursor:pointer;transition:.3s}
+.btn-primary{background:linear-gradient(90deg,var(--neon),var(--neon2));color:#000}
+.btn-primary:hover{transform:scale(1.02);box-shadow:0 0 22px rgba(0,255,204,.5)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.btn-outline{background:transparent;border:1px solid #444;color:#ccc}
+
+.pay-options{display:flex;gap:12px;margin-bottom:18px}
+.pay-card{flex:1;border:2px solid #333;border-radius:14px;padding:18px 10px;text-align:center;cursor:pointer;transition:.25s;background:#0a0c14}
+.pay-card .emoji{font-size:1.8rem;margin-bottom:6px}
+.pay-card .title{font-weight:bold;font-size:.9rem}
+.pay-card .sub{font-size:.72rem;color:#888;margin-top:3px}
+.pay-card.selected{border-color:var(--neon);box-shadow:0 0 16px rgba(0,255,204,.4);background:rgba(0,255,204,.06)}
+
+.online-box{display:none;text-align:center;padding:16px;background:#0a0c14;border-radius:12px;margin-bottom:16px}
+.online-box img.qr{width:180px;height:180px;object-fit:contain;background:#fff;border-radius:10px;padding:6px;margin-bottom:10px}
+.online-box p{color:#aaa;font-size:.82rem;margin-bottom:12px}
+.upload-box{border:1px dashed var(--neon);border-radius:10px;padding:14px;text-align:center}
+.upload-box img{max-width:130px;max-height:130px;border-radius:8px;margin-top:8px;display:none}
+.upload-box input[type=file]{color:#ccc;font-size:.8rem;margin-top:6px}
+
+.offline-note{display:none;background:rgba(255,176,32,.08);border:1px solid var(--warn);border-radius:12px;padding:14px;
+  color:var(--warn);font-size:.85rem;text-align:center;margin-bottom:16px}
+
+.status{text-align:center;margin-top:15px;font-weight:bold}
+
+.result-card{max-width:560px;margin:20px auto;padding:30px 22px;background:var(--card);border:1px solid var(--neon);border-radius:18px;text-align:center}
+.result-card img.logo{width:96px;height:96px;border-radius:50%;object-fit:cover;border:3px solid var(--neon);margin-bottom:14px}
+.result-card .big{font-size:1.9rem;color:var(--neon);letter-spacing:3px;font-weight:bold}
+.result-card .slot{font-size:1.1rem;color:var(--neon2);margin-top:6px}
+.copy-btn{margin-top:14px;padding:10px 20px;border-radius:8px;border:1px solid var(--neon);background:transparent;color:var(--neon);cursor:pointer}
+.warning-box{margin-top:20px;padding:14px;border:1px solid var(--warn);border-radius:10px;background:rgba(255,176,32,.08);
+  color:var(--warn);font-size:.82rem;text-align:left;line-height:1.6}
+
+.search-box{max-width:500px;margin:20px auto;text-align:center;padding:0 16px}
+.search-box input{padding:12px;width:65%;border-radius:8px 0 0 8px;border:1px solid var(--neon);background:#0a0c14;color:#fff}
+.search-box button{padding:12px 20px;border-radius:0 8px 8px 0;border:1px solid var(--neon);background:var(--neon);color:#000;font-weight:bold;cursor:pointer}
+
+.status-card{max-width:500px;margin:20px auto;padding:24px;background:var(--card);border-radius:16px;border:1px solid #333;text-align:center}
+.badge{display:inline-block;padding:8px 20px;border-radius:20px;font-weight:bold;margin:10px 0}
+.badge.pending{background:rgba(255,176,32,.2);color:var(--warn);border:1px solid var(--warn)}
+.badge.approved{background:rgba(0,255,204,.2);color:var(--neon);border:1px solid var(--neon)}
+.badge.rejected{background:rgba(255,46,99,.2);color:var(--neon2);border:1px solid var(--neon2)}
+.badge.banned{background:rgba(255,0,0,.25);color:#ff4444;border:1px solid #ff4444}
+.edit-btn{margin-top:14px;padding:10px 24px;border-radius:8px;border:none;background:var(--warn);color:#000;font-weight:bold;cursor:pointer}
+
+.whatsapp-float{position:fixed;bottom:25px;right:25px;background:#25d366;width:60px;height:60px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;box-shadow:0 0 20px rgba(37,211,102,.6);
+  animation:float 2s ease-in-out infinite;z-index:10;text-decoration:none}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.whatsapp-float svg{width:30px;height:30px;fill:#fff}
+
+.support{text-align:center;margin:30px auto 60px;color:#aaa;font-size:.85rem}
+.support b{color:var(--neon)}
+</style>
+</head>
+<body>
+
+<canvas id="bg"></canvas>
+
+<div class="topbar">
+  📅 Registration: <b>1 July – 10 July</b> &nbsp;|&nbsp;
+  ⚔️ Match: <b>12 July, 6:00 PM</b> &nbsp;|&nbsp;
+  📍 <a onclick="window.open('https://maps.app.goo.gl/4QvV2pK8cgQZFVyK6','_blank')">click hare - tournament location</a>
+</div>
+
+<header>
+  <h1>FREE FIRE CHAMPIONSHIP</h1>
+  <p>Full Map • Full Score • 6 Matches • 12 Squads Only</p>
+</header>
+
+<div class="info-bar">
+  <div class="info-chip">🏆 Entry Fee: ₹50</div>
+  <div class="info-chip">👥 12 Teams Total</div>
+  <div class="info-chip">🎮 Level 40+</div>
+  <div class="info-chip">🔥 Heroic (BR + CS)</div>
+</div>
+
+<details class="rules">
+  <summary>Tournament Rules & Eligibility</summary>
+  <ul>
+    <li>Squad mode — 4 real players (Real Name + Game Name + UID required)</li>
+    <li>Game account level must be <b>40+</b></li>
+    <li>Rank must be <b>Heroic or above</b> in both Battle Royale and Clash Squad</li>
+    <li>Full Map, <b>6 Different Maps ( must be download all)</b> — <b>6 matches total</b></li>
+    <li>Room ID & Password shared at <b>5:50 PM</b></li>
+    <li>Match starts sharp at <b>6:00 PM</b> — be present at least <b>5 minutes early</b></li>
+    <li>Fake UID / fake screenshots = instant disqualification</li>
+  </ul>
+</details>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="showTab('registerTab')">📝 Register</button>
+  <button class="tab-btn" onclick="showTab('statusTab')">🔍 Check Status</button>
+</div>
+
+<!-- ============ REGISTER TAB ============ -->
+<section id="registerTab" class="active">
+<div class="wizard-wrap">
+
+  <div class="progress">
+    <div class="dot active" id="dot1">1</div>
+    <div class="line" id="line12"></div>
+    <div class="dot" id="dot2">2</div>
+  </div>
+
+  <form id="regForm">
+
+    <!-- ===== STEP 1: TEAM & PLAYERS ===== -->
+    <div class="step-card" id="step1">
+      <h2>Team Details</h2>
+      <div class="sub">Fill in your squad information</div>
+
+      <div class="logo-upload">
+        <label class="logo-circle" for="teamLogo">
+          <img id="teamLogoPreview">
+          <span class="plus" id="logoPlus">+</span>
+        </label>
+        <input type="file" id="teamLogo" accept="image/*">
+        <span>Upload Team Logo</span>
+      </div>
+
+      <div class="field">
+        <label>Team Name</label>
+        <input type="text" id="teamName" placeholder="e.g. Phoenix Warriors">
+      </div>
+      <div class="field">
+        <label>Captain Real Name</label>
+        <input type="text" id="captainName" placeholder="Alphabets only">
+        <div class="error-msg" id="err-captainName">Only alphabets and spaces allowed</div>
+      </div>
+      <div class="field">
+        <label>Captain Contact Number</label>
+        <input type="tel" id="captainPhone" maxlength="10" placeholder="10-digit number">
+        <div class="error-msg" id="err-captainPhone">Must start with 6, 7, 8 or 9 and be 10 digits</div>
+      </div>
+      <div class="field">
+        <label>Present Location (City / Area)</label>
+        <input type="text" id="location" placeholder="e.g. Taltala">
+      </div>
+
+      <div class="players-wrap">
+        <div class="toggle-row">
+          <span class="toggle-label">👥 Squad Members Details (4 Players) <i>(optional)</i></span>
+          <label class="switch">
+            <input type="checkbox" id="playersToggle" onchange="togglePlayers()">
+            <span class="slider-toggle"></span>
+          </label>
+        </div>
+        <div class="players-collapse" id="playersCollapse">
+          <div id="players"></div>
+        </div>
+      </div>
+
+      <div class="nav-btns">
+        <button type="button" class="btn btn-primary" onclick="goStep(2)">Continue to Payment →</button>
+      </div>
+    </div>
+
+    <!-- ===== STEP 2: PAYMENT ===== -->
+    <div class="step-card" id="step2" style="display:none">
+      <h2>Payment</h2>
+      <div class="sub">Entry Fee: ₹50 per squad</div>
+
+      <div class="pay-options">
+        <div class="pay-card" id="onlineCard" onclick="selectPayment('online')">
+          <div class="emoji">💳</div>
+          <div class="title">Pay Online</div>
+          <div class="sub">Scan QR & upload proof</div>
+        </div>
+        <div class="pay-card" id="offlineCard" onclick="selectPayment('offline')">
+          <div class="emoji">🤝</div>
+          <div class="title">Pay Offline</div>
+          <div class="sub">Cash / handled manually</div>
+        </div>
+      </div>
+
+      <div class="online-box" id="onlineBox">
+        <img class="qr" src="qr.png" alt="Payment QR Code">
+        <p>Scan the QR code, pay ₹50, then upload your payment screenshot below.</p>
+        <div class="upload-box">
+          <label style="color:var(--neon);font-size:.85rem">Payment Screenshot</label><br>
+          <input type="file" id="paymentSS" accept="image/*">
+          <img id="paymentSSPreview">
+        </div>
+      </div>
+
+      <div class="offline-note" id="offlineNote">
+        ✅ No screenshot needed — you'll pay the ₹50 entry fee directly to the organizer offline.
+      </div>
+
+      <div class="nav-btns">
+        <button type="button" class="btn btn-outline" onclick="goStep(1)">← Back</button>
+        <button type="submit" class="btn btn-primary" id="submitBtn">Submit Registration</button>
+      </div>
+      <div class="status" id="status"></div>
+    </div>
+
+  </form>
+
+  <div class="result-card" id="resultCard" style="display:none">
+    <img class="logo" id="resultLogo">
+    <div>Registration Number</div>
+    <div class="big" id="resultRegNum"></div>
+    <div class="slot" id="resultSlot"></div>
+    <button class="copy-btn" onclick="copyRegNum()">📋 Copy Registration Number</button>
+    <div class="warning-box">
+      ⚠️ <b>Important:</b> Keep your registration number private. Do not share it with anyone
+      outside your team — if it is shared or misused, the community/organizers will not be
+      responsible and no support will be given for related issues.
+    </div>
+  </div>
+
+</div>
+</section>
+
+<!-- ============ STATUS TAB ============ -->
+<section id="statusTab">
+  <div class="search-box">
+    <input type="text" id="searchRegNum" maxlength="6" placeholder="Enter 6-digit Registration Number">
+    <button onclick="checkStatus()">Search</button>
+  </div>
+  <div id="statusResult"></div>
+</section>
+
+<div class="support">
+  Support Helpline: <b>+91 8420432709</b> | WhatsApp Direct Chat available below
+</div>
+
+<a class="whatsapp-float" href="https://wa.me/918420432709" target="_blank">
+  <svg viewBox="0 0 32 32"><path d="M16 0C7.2 0 0 7.2 0 16c0 2.8.7 5.5 2 7.9L0 32l8.3-2.2c2.3 1.2 4.9 1.9 7.7 1.9 8.8 0 16-7.2 16-16S24.8 0 16 0zm0 29c-2.5 0-4.9-.7-7-1.9l-.5-.3-4.9 1.3 1.3-4.8-.3-.5C3.3 20.7 2.6 18.4 2.6 16 2.6 8.6 8.6 2.6 16 2.6S29.4 8.6 29.4 16 23.4 29 16 29zm7.4-8.6c-.4-.2-2.4-1.2-2.8-1.3-.4-.1-.6-.2-.9.2-.3.4-1 1.3-1.2 1.5-.2.2-.4.3-.8.1-.4-.2-1.6-.6-3.1-1.9-1.1-1-1.9-2.2-2.1-2.6-.2-.4 0-.6.2-.8.2-.2.4-.4.6-.7.2-.2.3-.4.4-.7.1-.3.1-.5 0-.7-.1-.2-.9-2.2-1.3-3-.3-.8-.7-.7-.9-.7h-.8c-.3 0-.7.1-1 .5-.3.4-1.3 1.3-1.3 3.2s1.4 3.7 1.6 4c.2.3 2.7 4.2 6.6 5.8.9.4 1.6.6 2.2.8.9.3 1.8.2 2.4.1.7-.1 2.4-1 2.7-1.9.3-.9.3-1.7.2-1.9-.1-.2-.4-.3-.8-.5z"/></svg>
+</a>
+
+<script>
+/* ================= BACKGROUND PARTICLES ================= */
+const canvas=document.getElementById('bg'),ctx=canvas.getContext('2d');
+canvas.width=innerWidth;canvas.height=innerHeight;
+let particles=Array.from({length:60},()=>({
+  x:Math.random()*canvas.width,y:Math.random()*canvas.height,
+  r:Math.random()*2+1,dx:(Math.random()-0.5)*0.5,dy:(Math.random()-0.5)*0.5
+}));
+function anim(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle='#00ffcc';
+  particles.forEach(p=>{
+    p.x+=p.dx;p.y+=p.dy;
+    if(p.x<0||p.x>canvas.width)p.dx*=-1;
+    if(p.y<0||p.y>canvas.height)p.dy*=-1;
+    ctx.beginPath();ctx.globalAlpha=0.5;
+    ctx.arc(p.x,p.y,p.r,0,7);ctx.fill();
+  });
+  requestAnimationFrame(anim);
+}
+anim();
+addEventListener('resize',()=>{canvas.width=innerWidth;canvas.height=innerHeight;});
+
+/* ================= TABS ================= */
+function showTab(id){
+  document.querySelectorAll('section').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+/* ================= WIZARD STEP NAV ================= */
+function goStep(step){
+  if(step===2 && !validateStep1())return;
+  document.getElementById('step1').style.display = step===1?'block':'none';
+  document.getElementById('step2').style.display = step===2?'block':'none';
+  document.getElementById('dot1').classList.toggle('done',step===2);
+  document.getElementById('dot1').classList.toggle('active',step===1);
+  document.getElementById('dot2').classList.toggle('active',step===2);
+  document.getElementById('line12').classList.toggle('done',step===2);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ================= BUILD 4 PLAYER FIELDS ================= */
+const playersDiv=document.getElementById('players');
+for(let i=1;i<=4;i++){
+  playersDiv.innerHTML+=`
+  <div class="player-card">
+    <div class="field">
+      <label><span class="pnum">${i}</span>Real Name</label>
+      <input type="text" id="p${i}real" placeholder="Alphabets only">
+      <div class="error-msg" id="err-p${i}real">Only alphabets and spaces allowed</div>
+    </div>
+    <div class="field">
+      <label>In-Game Name</label>
+      <input type="text" id="p${i}game" placeholder="Free Fire username">
+    </div>
+    <div class="field">
+      <label>Game UID</label>
+      <input type="text" id="p${i}uid" maxlength="13" placeholder="7 to 13 digit number">
+      <div class="error-msg" id="err-p${i}uid">UID must be 7 to 13 digits, numbers only</div>
+    </div>
+  </div>`;
+}
+
+/* ================= OPTIONAL PLAYERS TOGGLE (smooth slide) ================= */
+function togglePlayers(){
+  const checked=document.getElementById('playersToggle').checked;
+  const box=document.getElementById('playersCollapse');
+  window.playersEnabled=checked;
+  if(checked){
+    box.classList.add('open');
+    box.style.maxHeight=box.scrollHeight+'px';
+  } else {
+    box.style.maxHeight=box.scrollHeight+'px'; // lock current height first
+    requestAnimationFrame(()=>{
+      box.style.maxHeight='0px';
+      box.classList.remove('open');
+    });
+  }
+}
+
+/* ================= VALIDATION HELPERS ================= */
+const NAME_RE=/^[A-Za-z\s]+$/;
+const UID_RE=/^\d{7,13}$/;
+const PHONE_RE=/^[6789]\d{9}$/;
+
+function validateField(id,regex){
+  const val=document.getElementById(id).value.trim();
+  const ok=regex.test(val);
+  document.getElementById('err-'+id).style.display=ok?'none':'block';
+  return ok;
+}
+
+function validateStep1(){
+  let valid=true;
+  if(!document.getElementById('teamName').value.trim()){alert('Please enter your team name');return false;}
+  valid=validateField('captainName',NAME_RE)&&valid;
+  valid=validateField('captainPhone',PHONE_RE)&&valid;
+  if(!document.getElementById('location').value.trim()){alert('Please enter your location');return false;}
+  if(window.playersEnabled){
+    for(let i=1;i<=4;i++){
+      valid=validateField('p'+i+'real',NAME_RE)&&valid;
+      valid=validateField('p'+i+'uid',UID_RE)&&valid;
+      if(!document.getElementById('p'+i+'game').value.trim()){valid=false;}
+    }
+  }
+  if(!window.teamLogoB64){alert('Please upload your team logo');valid=false;}
+  if(!valid && document.querySelectorAll('.error-msg[style*="block"]').length===0){
+    alert('Please fill in all fields correctly');
+  }
+  return valid;
+}
+
+/* ================= IMAGE COMPRESSION -> BASE64 ================= */
+function fileToCompressedBase64(file,maxW){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        const scale=Math.min(1,maxW/img.width);
+        const w=img.width*scale, h=img.height*scale;
+        const c=document.createElement('canvas');
+        c.width=w;c.height=h;
+        c.getContext('2d').drawImage(img,0,0,w,h);
+        resolve(c.toDataURL('image/jpeg',0.6));
+      };
+      img.onerror=reject;
+      img.src=e.target.result;
+    };
+    reader.onerror=reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+document.getElementById('teamLogo').addEventListener('change',async e=>{
+  if(!e.target.files[0])return;
+  const b64=await fileToCompressedBase64(e.target.files[0],300);
+  const prev=document.getElementById('teamLogoPreview');
+  prev.src=b64;prev.style.display='block';
+  document.getElementById('logoPlus').style.display='none';
+  window.teamLogoB64=b64;
+});
+document.getElementById('paymentSS').addEventListener('change',async e=>{
+  if(!e.target.files[0])return;
+  const b64=await fileToCompressedBase64(e.target.files[0],500);
+  const prev=document.getElementById('paymentSSPreview');
+  prev.src=b64;prev.style.display='inline-block';
+  window.paymentSSB64=b64;
+});
+
+/* ================= PAYMENT METHOD SELECT ================= */
+function selectPayment(method){
+  window.paymentMethod=method;
+  document.getElementById('onlineCard').classList.toggle('selected',method==='online');
+  document.getElementById('offlineCard').classList.toggle('selected',method==='offline');
+  document.getElementById('onlineBox').style.display=method==='online'?'block':'none';
+  document.getElementById('offlineNote').style.display=method==='offline'?'block':'none';
+}
+
+/* ================= FIREBASE ================= */
+const firebaseConfig={
+  apiKey:"AIzaSyDghrBdR6FN1Mu_krCX-GLllb1PDIlO_JU",
+  authDomain:"freefire-tournament-37e7d.firebaseapp.com",
+  projectId:"freefire-tournament-37e7d",
+  storageBucket:"freefire-tournament-37e7d.firebasestorage.app",
+  messagingSenderId:"543090619902",
+  appId:"1:543090619902:web:9180c67d111a8ae62cbcaf"
+};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.firestore();
+
+let editingRegNum=null;
+
+document.getElementById('regForm').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const status=document.getElementById('status');
+
+  if(!window.paymentMethod){
+    status.style.color='#ff2e63';
+    status.textContent='Please choose a payment method';
+    return;
+  }
+  if(window.paymentMethod==='online' && !window.paymentSSB64){
+    status.style.color='#ff2e63';
+    status.textContent='Please upload your payment screenshot';
+    return;
+  }
+
+  document.getElementById('submitBtn').disabled=true;
+  status.style.color='#00ffcc';
+  status.textContent='Submitting...';
+
+  const players=[];
+  if(window.playersEnabled){
+    for(let i=1;i<=4;i++){
+      players.push({
+        realName:document.getElementById('p'+i+'real').value.trim(),
+        gameName:document.getElementById('p'+i+'game').value.trim(),
+        uid:document.getElementById('p'+i+'uid').value.trim()
+      });
+    }
+  }
+
+  const data={
+    teamName:document.getElementById('teamName').value.trim(),
+    teamLogo:window.teamLogoB64,
+    captainName:document.getElementById('captainName').value.trim(),
+    captainPhone:document.getElementById('captainPhone').value.trim(),
+    location:document.getElementById('location').value.trim(),
+    players,
+    paymentMethod:window.paymentMethod,
+    paymentScreenshot: window.paymentMethod==='online' ? window.paymentSSB64 : null,
+    status:'pending',
+    updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  try{
+    if(editingRegNum){
+      await db.collection('registrations').doc(editingRegNum).update(data);
+      status.textContent='✅ Updated successfully!';
+      showResult(editingRegNum,window.lastSlot,window.teamLogoB64);
+    } else {
+      let regNum, regRef, regSnap;
+      for(let tries=0;tries<15;tries++){
+        regNum=String(Math.floor(100000+Math.random()*900000));
+        regRef=db.collection('registrations').doc(regNum);
+        regSnap=await regRef.get();
+        if(!regSnap.exists) break;
+      }
+      data.createdAt=firebase.firestore.FieldValue.serverTimestamp();
+      await regRef.set(data);
+      status.textContent='✅ Registered successfully!';
+      showResult(regNum,null,window.teamLogoB64);
+    }
+    document.getElementById('regForm').style.display='none';
+  }catch(err){
+    status.style.color='#ff2e63';
+    status.textContent='❌ Error: '+err.message;
+  }
+  document.getElementById('submitBtn').disabled=false;
+});
+
+function showResult(regNum,slot,logo){
+  document.getElementById('resultCard').style.display='block';
+  document.getElementById('resultLogo').src=logo;
+  document.getElementById('resultRegNum').textContent=regNum;
+  document.getElementById('resultSlot').textContent = slot ? ('Slot Number: '+slot) : 'Slot Number: assigned after approval';
+  window.currentRegNum=regNum;
+}
+function copyRegNum(){
+  navigator.clipboard.writeText(window.currentRegNum);
+  alert('Registration number copied!');
+}
+
+/* ================= STATUS CHECK ================= */
+async function checkStatus(){
+  const regNum=document.getElementById('searchRegNum').value.trim();
+  const box=document.getElementById('statusResult');
+  if(!/^\d{6}$/.test(regNum)){box.innerHTML='<p style="color:#ff2e63;text-align:center">Enter a valid 6-digit registration number</p>';return;}
+
+  const doc=await db.collection('registrations').doc(regNum).get();
+  if(!doc.exists){box.innerHTML='<p style="color:#ff2e63;text-align:center">No registration found with this number</p>';return;}
+
+  const d=doc.data();
+  window.lastSlot=d.slot||null;
+  const badgeClass=d.status;
+  let editBtn='';
+  if(d.status==='pending'){
+    editBtn=`<button class="edit-btn" onclick='loadForEdit("${regNum}")'>✏️ Edit My Details</button>`;
+  }
+  box.innerHTML=`
+    <div class="status-card">
+      <img class="logo" src="${d.teamLogo}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid var(--neon)">
+      <h3 style="margin-top:10px">${d.teamName}</h3>
+      <div>Slot Number: <b>${d.slot ? d.slot : 'Not assigned yet'}</b></div>
+      <div class="badge ${badgeClass}">${d.status.toUpperCase()}</div>
+      ${d.status==='approved' ? '<p style="color:#aaa">Your registration is approved. Details are locked and cannot be edited.</p>' : ''}
+      ${d.status==='rejected' ? '<p style="color:#ff2e63">Your registration was rejected. Contact support for details.</p>' : ''}
+      ${d.status==='banned' ? '<p style="color:#ff4444">This team has been banned from the tournament.</p>' : ''}
+      ${editBtn}
+    </div>`;
+}
+
+function loadForEdit(regNum){
+  db.collection('registrations').doc(regNum).get().then(doc=>{
+    const d=doc.data();
+    editingRegNum=regNum;
+    window.lastSlot=d.slot||null;
+    document.getElementById('regForm').style.display='block';
+    document.getElementById('resultCard').style.display='none';
+    document.getElementById('teamName').value=d.teamName;
+    document.getElementById('captainName').value=d.captainName;
+    document.getElementById('captainPhone').value=d.captainPhone;
+    document.getElementById('location').value=d.location;
+    window.teamLogoB64=d.teamLogo;
+    document.getElementById('teamLogoPreview').src=d.teamLogo;
+    document.getElementById('teamLogoPreview').style.display='block';
+    document.getElementById('logoPlus').style.display='none';
+    if(d.players && d.players.length){
+      document.getElementById('playersToggle').checked=true;
+      togglePlayers();
+      d.players.forEach((p,i)=>{
+        document.getElementById('p'+(i+1)+'real').value=p.realName;
+        document.getElementById('p'+(i+1)+'game').value=p.gameName;
+        document.getElementById('p'+(i+1)+'uid').value=p.uid;
+      });
+    }
+    if(d.paymentMethod){
+      selectPayment(d.paymentMethod);
+      if(d.paymentMethod==='online' && d.paymentScreenshot){
+        window.paymentSSB64=d.paymentScreenshot;
+        document.getElementById('paymentSSPreview').src=d.paymentScreenshot;
+        document.getElementById('paymentSSPreview').style.display='inline-block';
+      }
+    }
+    showTab('registerTab');
+    document.querySelectorAll('.tab-btn')[0].click();
+    goStep(1);
+  });
+}
+</script>
+</body>
+</html>
