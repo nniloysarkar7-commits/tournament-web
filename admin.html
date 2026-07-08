@@ -1,2 +1,298 @@
-429: Too Many Requests
-For more on scraping GitHub and how it may affect your rights, please review our Terms of Service (https://docs.github.com/en/site-policy/github-terms/github-terms-of-service).
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel — FREE FIRE CHAMPIONSHIP</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+:root{--neon:#00ffcc;--neon2:#ff2e63;--bg:#05060a;--card:#0d0f1a;--warn:#ffb020}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',sans-serif}
+body{background:var(--bg);color:#fff;min-height:100vh}
+
+.login-wrap{max-width:400px;margin:100px auto;padding:30px;background:var(--card);border:1px solid var(--neon);border-radius:16px}
+.login-wrap h2{color:var(--neon);text-align:center;margin-bottom:20px}
+.login-wrap input{width:100%;padding:12px;margin-bottom:14px;border-radius:8px;border:1px solid #333;background:#0a0c14;color:#fff}
+.login-wrap button{width:100%;padding:12px;border:none;border-radius:8px;background:var(--neon);color:#000;font-weight:bold;cursor:pointer}
+.login-err{color:var(--neon2);text-align:center;margin-top:10px;font-size:.85rem}
+
+#dashboard{display:none;padding:20px}
+.dash-header{display:flex;justify-content:space-between;align-items:center;max-width:1200px;margin:0 auto 20px}
+.dash-header h1{color:var(--neon);font-size:1.6rem}
+.logout-btn{padding:8px 16px;border-radius:8px;border:1px solid var(--neon2);background:transparent;color:var(--neon2);cursor:pointer}
+
+.stats{display:flex;gap:14px;flex-wrap:wrap;max-width:1200px;margin:0 auto 20px}
+.stat{flex:1;min-width:120px;background:var(--card);border:1px solid #333;border-radius:12px;padding:14px;text-align:center}
+.stat .num{font-size:1.6rem;color:var(--neon);font-weight:bold}
+.stat .lbl{font-size:.8rem;color:#aaa}
+
+.filters{max-width:1200px;margin:0 auto 20px;display:flex;gap:10px;flex-wrap:wrap}
+.filters button{padding:8px 16px;border-radius:20px;border:1px solid #444;background:transparent;color:#ccc;cursor:pointer}
+.filters button.active{border-color:var(--neon);color:var(--neon);background:rgba(0,255,204,.1)}
+
+.grid{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+.reg-card{background:var(--card);border:1px solid #333;border-radius:14px;padding:16px}
+.reg-card .top{display:flex;gap:12px;align-items:center;margin-bottom:10px}
+.reg-card img.logo{width:50px;height:50px;border-radius:50%;object-fit:cover;border:2px solid var(--neon);cursor:pointer}
+.reg-card .team{font-weight:bold;font-size:1.05rem}
+.reg-card .slot{color:var(--neon2);font-size:.85rem}
+.reg-card .regnum{font-size:.8rem;color:#aaa}
+.reg-card .players{font-size:.82rem;color:#ccc;margin:8px 0;line-height:1.6}
+.reg-card .players b{color:var(--neon)}
+.reg-card img.ss{width:100%;max-height:150px;object-fit:contain;background:#000;border-radius:8px;margin:8px 0;cursor:pointer}
+.badge{display:inline-block;padding:4px 12px;border-radius:14px;font-size:.75rem;font-weight:bold}
+.badge.pending{background:rgba(255,176,32,.2);color:var(--warn)}
+.badge.approved{background:rgba(0,255,204,.2);color:var(--neon)}
+.badge.rejected{background:rgba(255,46,99,.2);color:var(--neon2)}
+.badge.banned{background:rgba(255,0,0,.25);color:#ff4444}
+
+.actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.actions button{flex:1;min-width:80px;padding:8px;border:none;border-radius:8px;font-weight:bold;cursor:pointer;font-size:.8rem}
+.btn-approve{background:var(--neon);color:#000}
+.btn-reject{background:var(--neon2);color:#fff}
+.btn-ban{background:#ff4444;color:#fff}
+.btn-edit{background:#444;color:#fff}
+.btn-delete{background:#222;color:#ff4444;border:1px solid #ff4444}
+
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:100;align-items:center;justify-content:center}
+.modal{background:var(--card);border:1px solid var(--neon);border-radius:16px;padding:24px;max-width:500px;width:90%;max-height:85vh;overflow:auto}
+.modal input{width:100%;padding:10px;margin-bottom:10px;border-radius:8px;border:1px solid #333;background:#0a0c14;color:#fff}
+.modal label{font-size:.8rem;color:#9fffe8}
+.modal button.save{width:100%;padding:12px;border:none;border-radius:8px;background:var(--neon);color:#000;font-weight:bold;cursor:pointer;margin-top:10px}
+.modal button.close{width:100%;padding:10px;border:none;border-radius:8px;background:#333;color:#fff;cursor:pointer;margin-top:8px}
+img.full{max-width:100%;border-radius:10px}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div class="login-wrap" id="loginWrap">
+  <h2>🔒 Admin Login</h2>
+  <input type="email" id="loginEmail" placeholder="Admin Email">
+  <input type="password" id="loginPass" placeholder="Password">
+  <button onclick="doLogin()">Login</button>
+  <div class="login-err" id="loginErr"></div>
+</div>
+
+<!-- ============ DASHBOARD ============ -->
+<div id="dashboard">
+  <div class="dash-header">
+    <h1>🎮 Tournament Admin Panel</h1>
+    <button class="logout-btn" onclick="doLogout()">Logout</button>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="filters" id="filters">
+    <button class="active" data-f="all" onclick="setFilter('all')">All</button>
+    <button data-f="pending" onclick="setFilter('pending')">Pending</button>
+    <button data-f="approved" onclick="setFilter('approved')">Approved</button>
+    <button data-f="rejected" onclick="setFilter('rejected')">Rejected</button>
+    <button data-f="banned" onclick="setFilter('banned')">Banned</button>
+  </div>
+
+  <div class="grid" id="grid"></div>
+</div>
+
+<!-- ============ MODALS ============ -->
+<div class="modal-bg" id="ssModalBg" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal"><img class="full" id="ssModalImg"><button class="close" onclick="document.getElementById('ssModalBg').style.display='none'">Close</button></div>
+</div>
+
+<div class="modal-bg" id="editModalBg" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal">
+    <h3 style="color:var(--neon);margin-bottom:14px">Edit Registration</h3>
+    <div id="editFields"></div>
+    <button class="save" onclick="saveEdit()">Save Changes</button>
+    <button class="close" onclick="document.getElementById('editModalBg').style.display='none'">Cancel</button>
+  </div>
+</div>
+
+<script>
+/* ================= FIREBASE ================= */
+const firebaseConfig={
+  apiKey:"AIzaSyDghrBdR6FN1Mu_krCX-GLllb1PDIlO_JU",
+  authDomain:"freefire-tournament-37e7d.firebaseapp.com",
+  projectId:"freefire-tournament-37e7d",
+  storageBucket:"freefire-tournament-37e7d.firebasestorage.app",
+  messagingSenderId:"543090619902",
+  appId:"1:543090619902:web:9180c67d111a8ae62cbcaf"
+};
+firebase.initializeApp(firebaseConfig);
+const auth=firebase.auth();
+const db=firebase.firestore();
+
+let allRegs=[];
+let currentFilter='all';
+let editingId=null;
+
+/* ================= LOGIN ================= */
+function doLogin(){
+  const email=document.getElementById('loginEmail').value.trim();
+  const pass=document.getElementById('loginPass').value;
+  auth.signInWithEmailAndPassword(email,pass)
+    .catch(err=>{document.getElementById('loginErr').textContent=err.message;});
+}
+function doLogout(){auth.signOut();}
+
+auth.onAuthStateChanged(user=>{
+  if(user){
+    document.getElementById('loginWrap').style.display='none';
+    document.getElementById('dashboard').style.display='block';
+    loadRegistrations();
+  } else {
+    document.getElementById('loginWrap').style.display='block';
+    document.getElementById('dashboard').style.display='none';
+  }
+});
+
+/* ================= LOAD DATA ================= */
+function loadRegistrations(){
+  db.collection('registrations').onSnapshot(snap=>{
+    allRegs=[];
+    snap.forEach(doc=>allRegs.push({id:doc.id,...doc.data()}));
+    allRegs.sort((a,b)=>{
+      if(a.slot && b.slot) return a.slot-b.slot;
+      if(a.slot && !b.slot) return -1;
+      if(!a.slot && b.slot) return 1;
+      return 0;
+    });
+    renderStats();
+    renderGrid();
+  });
+}
+
+function renderStats(){
+  const counts={pending:0,approved:0,rejected:0,banned:0};
+  allRegs.forEach(r=>counts[r.status]=(counts[r.status]||0)+1);
+  document.getElementById('stats').innerHTML=`
+    <div class="stat"><div class="num">${counts.approved||0}/12</div><div class="lbl">Slots Filled</div></div>
+    <div class="stat"><div class="num">${allRegs.length}</div><div class="lbl">Total Registrations</div></div>
+    <div class="stat"><div class="num">${counts.pending||0}</div><div class="lbl">Pending</div></div>
+    <div class="stat"><div class="num">${counts.rejected||0}</div><div class="lbl">Rejected</div></div>
+    <div class="stat"><div class="num">${counts.banned||0}</div><div class="lbl">Banned</div></div>`;
+}
+
+function setFilter(f){
+  currentFilter=f;
+  document.querySelectorAll('#filters button').forEach(b=>b.classList.toggle('active',b.dataset.f===f));
+  renderGrid();
+}
+
+function renderGrid(){
+  const grid=document.getElementById('grid');
+  const list=currentFilter==='all'?allRegs:allRegs.filter(r=>r.status===currentFilter);
+  grid.innerHTML=list.map(r=>`
+    <div class="reg-card">
+      <div class="top">
+        <img class="logo" src="${r.teamLogo}" onclick="viewImage('${r.id}','logo')">
+        <div>
+          <div class="team">${r.teamName}</div>
+          <div class="slot">${r.slot ? 'Slot #'+r.slot : 'No Slot'}</div>
+          <div class="regnum">Reg No: ${r.id}</div>
+        </div>
+      </div>
+      <div><span class="badge ${r.status}">${r.status.toUpperCase()}</span></div>
+      <div class="players">
+        <b>Captain:</b> ${r.captainName} (${r.captainPhone})<br>
+        <b>Location:</b> ${r.location}<br>
+        ${r.players && r.players.length ? r.players.map((p,i)=>`<b>P${i+1}:</b> ${p.realName} / ${p.gameName} / UID:${p.uid}`).join('<br>') : '<i style="color:#888">No player details submitted</i>'}
+      </div>
+      <div class="players"><b>Payment:</b> ${r.paymentMethod==='offline' ? '🤝 Offline (collected manually)' : '💳 Online'}</div>
+      ${r.paymentMethod==='offline' || !r.paymentScreenshot
+        ? '<div style="text-align:center;color:#888;font-size:.8rem;padding:10px;background:#0a0c14;border-radius:8px;margin:8px 0">No screenshot — offline payment</div>'
+        : `<img class="ss" src="${r.paymentScreenshot}" onclick="viewImage('${r.id}','ss')">`}
+      <div class="actions">
+        <button class="btn-approve" onclick="setStatus('${r.id}','approved')">Approve</button>
+        <button class="btn-reject" onclick="setStatus('${r.id}','rejected')">Reject</button>
+        <button class="btn-ban" onclick="setStatus('${r.id}','banned')">Ban</button>
+      </div>
+      <div class="actions">
+        <button class="btn-edit" onclick="openEdit('${r.id}')">Edit Details</button>
+        <button class="btn-delete" onclick="deleteReg('${r.id}')">Delete</button>
+      </div>
+    </div>`).join('');
+}
+
+function viewImage(id,field){
+  const r=allRegs.find(x=>x.id===id);
+  const src=field==='logo'?r.teamLogo:r.paymentScreenshot;
+  document.getElementById('ssModalImg').src=src;
+  document.getElementById('ssModalBg').style.display='flex';
+}
+
+async function setStatus(id,status){
+  try{
+    if(status==='approved'){
+      // find the lowest slot number (1-12) not currently used by another approved team
+      const used=new Set(
+        allRegs.filter(r=>r.status==='approved' && r.id!==id && r.slot).map(r=>r.slot)
+      );
+      let freeSlot=null;
+      for(let i=1;i<=12;i++){ if(!used.has(i)){ freeSlot=i; break; } }
+      if(freeSlot===null){
+        alert('❌ All 12 slots are already filled!\n\nReject or Ban an approved team first to free up a slot.');
+        return;
+      }
+      await db.collection('registrations').doc(id).update({status:'approved',slot:freeSlot});
+    } else {
+      // reject / ban -> remove any slot this team was holding
+      await db.collection('registrations').doc(id).update({
+        status,
+        slot: firebase.firestore.FieldValue.delete()
+      });
+    }
+  }catch(err){
+    alert('❌ Failed to update status!\n\nReason: '+err.message+'\n\nThis usually means Firestore Rules are blocking this action, or you are not properly logged in. Please re-check Firebase Console → Firestore → Rules, and make sure you clicked Publish.');
+  }
+}
+
+async function deleteReg(id){
+  if(!confirm('Delete this registration permanently? This cannot be undone.'))return;
+  try{
+    await db.collection('registrations').doc(id).delete();
+  }catch(err){
+    alert('❌ Failed to delete!\n\nReason: '+err.message);
+  }
+}
+
+/* ================= EDIT MODAL ================= */
+function openEdit(id){
+  editingId=id;
+  const r=allRegs.find(x=>x.id===id);
+  let html=`
+    <label>Team Name</label><input id="e_teamName" value="${r.teamName}">
+    <label>Captain Name</label><input id="e_captainName" value="${r.captainName}">
+    <label>Captain Phone</label><input id="e_captainPhone" value="${r.captainPhone}">
+    <label>Location</label><input id="e_location" value="${r.location}">`;
+  (r.players||[]).forEach((p,i)=>{
+    html+=`
+    <label>Player ${i+1} Real Name</label><input id="e_p${i}real" value="${p.realName}">
+    <label>Player ${i+1} Game Name</label><input id="e_p${i}game" value="${p.gameName}">
+    <label>Player ${i+1} UID</label><input id="e_p${i}uid" value="${p.uid}">`;
+  });
+  document.getElementById('editFields').innerHTML=html;
+  document.getElementById('editModalBg').style.display='flex';
+}
+
+async function saveEdit(){
+  const r=allRegs.find(x=>x.id===editingId);
+  const players=(r.players||[]).map((p,i)=>({
+    realName:document.getElementById('e_p'+i+'real').value.trim(),
+    gameName:document.getElementById('e_p'+i+'game').value.trim(),
+    uid:document.getElementById('e_p'+i+'uid').value.trim()
+  }));
+  await db.collection('registrations').doc(editingId).update({
+    teamName:document.getElementById('e_teamName').value.trim(),
+    captainName:document.getElementById('e_captainName').value.trim(),
+    captainPhone:document.getElementById('e_captainPhone').value.trim(),
+    location:document.getElementById('e_location').value.trim(),
+    players
+  });
+  document.getElementById('editModalBg').style.display='none';
+}
+</script>
+</body>
+</html>
